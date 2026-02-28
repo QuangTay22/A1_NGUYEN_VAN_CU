@@ -3,8 +3,18 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const normalizedUrl = SUPABASE_URL.replace(/\s+/g, "");
 const supabaseClient = window.supabase.createClient(normalizedUrl, SUPABASE_ANON_KEY);
-
 const currentPage = window.location.pathname.split("/").pop() || "index.html";
+
+const getInputValue = (id) => {
+  const element = document.getElementById(id);
+  return element ? element.value.trim() : "";
+};
+
+const setButtonLoading = (button, isLoading, loadingText, defaultText) => {
+  if (!button) return;
+  button.disabled = isLoading;
+  button.textContent = isLoading ? loadingText : defaultText;
+};
 
 const requireAuth = async () => {
   const {
@@ -26,14 +36,19 @@ const redirectIfAuthenticated = async () => {
 
   if (session) {
     window.location.href = "home.html";
+    return true;
   }
+
+  return false;
 };
 
 const handleLoginPage = async () => {
-  await redirectIfAuthenticated();
+  const redirected = await redirectIfAuthenticated();
+  if (redirected) return;
 
   const loginForm = document.getElementById("login-form");
   const goSignupButton = document.getElementById("go-signup");
+  const loginSubmitButton = loginForm?.querySelector('button[type="submit"]');
 
   goSignupButton?.addEventListener("click", () => {
     window.location.href = "signup.html";
@@ -42,15 +57,19 @@ const handleLoginPage = async () => {
   loginForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const email = document.getElementById("login-email")?.value.trim();
-    const password = document.getElementById("login-password")?.value;
+    const email = getInputValue("login-email");
+    const password = document.getElementById("login-password")?.value || "";
 
     if (!email || !password) {
       alert("Vui lòng nhập đầy đủ email và mật khẩu.");
       return;
     }
 
+    setButtonLoading(loginSubmitButton, true, "Đang đăng nhập...", "Log in");
+
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+    setButtonLoading(loginSubmitButton, false, "Đang đăng nhập...", "Log in");
 
     if (error) {
       alert(`Đăng nhập thất bại: ${error.message}`);
@@ -62,10 +81,12 @@ const handleLoginPage = async () => {
 };
 
 const handleSignupPage = async () => {
-  await redirectIfAuthenticated();
+  const redirected = await redirectIfAuthenticated();
+  if (redirected) return;
 
   const signupForm = document.getElementById("signup-form");
   const goLoginButton = document.getElementById("go-login");
+  const signupSubmitButton = signupForm?.querySelector('button[type="submit"]');
 
   goLoginButton?.addEventListener("click", () => {
     window.location.href = "index.html";
@@ -74,9 +95,9 @@ const handleSignupPage = async () => {
   signupForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const email = document.getElementById("signup-email")?.value.trim();
-    const password = document.getElementById("signup-password")?.value;
-    const confirmPassword = document.getElementById("signup-confirm-password")?.value;
+    const email = getInputValue("signup-email");
+    const password = document.getElementById("signup-password")?.value || "";
+    const confirmPassword = document.getElementById("signup-confirm-password")?.value || "";
 
     if (!email || !password || !confirmPassword) {
       alert("Vui lòng điền đầy đủ thông tin.");
@@ -88,13 +109,31 @@ const handleSignupPage = async () => {
       return;
     }
 
-    const { error } = await supabaseClient.auth.signUp({ email, password });
+    setButtonLoading(signupSubmitButton, true, "Đang tạo tài khoản...", "Create account");
+
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
 
     if (error) {
+      setButtonLoading(signupSubmitButton, false, "Đang tạo tài khoản...", "Create account");
       alert(`Tạo tài khoản thất bại: ${error.message}`);
       return;
     }
 
+    if (!data.session) {
+      const { error: loginAfterSignupError } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (loginAfterSignupError) {
+        setButtonLoading(signupSubmitButton, false, "Đang tạo tài khoản...", "Create account");
+        alert("Tài khoản đã được tạo. Vui lòng xác nhận email (nếu được bật) rồi đăng nhập.");
+        window.location.href = "index.html";
+        return;
+      }
+    }
+
+    setButtonLoading(signupSubmitButton, false, "Đang tạo tài khoản...", "Create account");
     alert("Tạo tài khoản thành công!");
     window.location.href = "home.html";
   });
@@ -115,7 +154,9 @@ const createPostElement = (post) => {
   const timeElement = document.createElement("div");
   timeElement.className = "post-time";
   const createdAt = new Date(post.created_at);
-  timeElement.textContent = createdAt.toLocaleString("vi-VN");
+  timeElement.textContent = createdAt.toLocaleString("vi-VN", {
+    hour12: false,
+  });
 
   postElement.append(emailElement, contentElement, timeElement);
   return postElement;
@@ -125,12 +166,12 @@ const loadPosts = async () => {
   const postsList = document.getElementById("posts-list");
   if (!postsList) return;
 
-  postsList.innerHTML = "";
-
   const { data, error } = await supabaseClient
     .from("posts")
     .select("id, user_email, content, created_at")
     .order("created_at", { ascending: false });
+
+  postsList.innerHTML = "";
 
   if (error) {
     alert(`Không thể tải bài viết: ${error.message}`);
@@ -157,6 +198,7 @@ const handleHomePage = async () => {
   const postForm = document.getElementById("post-form");
   const logoutButton = document.getElementById("logout-btn");
   const postContentInput = document.getElementById("post-content");
+  const postSubmitButton = postForm?.querySelector('button[type="submit"]');
 
   await loadPosts();
 
@@ -171,12 +213,16 @@ const handleHomePage = async () => {
       return;
     }
 
+    setButtonLoading(postSubmitButton, true, "Đang đăng...", "Post");
+
     const { error } = await supabaseClient.from("posts").insert([
       {
         user_email: email,
         content,
       },
     ]);
+
+    setButtonLoading(postSubmitButton, false, "Đang đăng...", "Post");
 
     if (error) {
       alert(`Đăng bài thất bại: ${error.message}`);
@@ -194,6 +240,11 @@ const handleHomePage = async () => {
 };
 
 window.addEventListener("DOMContentLoaded", async () => {
+  if (!window.supabase || typeof window.supabase.createClient !== "function") {
+    alert("Không tải được thư viện Supabase. Vui lòng thử lại.");
+    return;
+  }
+
   if (currentPage === "index.html" || currentPage === "") {
     await handleLoginPage();
   } else if (currentPage === "signup.html") {
