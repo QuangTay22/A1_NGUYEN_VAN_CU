@@ -1,6 +1,9 @@
 const SUPABASE_URL = "https://vzznktcbhkmoukn tyjgq.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6em5rdGNiaGttdW9rbnR5anFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzk3MjYsImV4cCI6MjA4Nzg1NTcyNn0.unkyvL4_AFxRYGpnkyRfW7RHTexuVXbZF1U4Vil8d9Q";
 
+const POST_EMAIL_COLUMNS = ["user_email", "email"];
+let cachedPostEmailColumn = null;
+
 const decodeJwtPayload = (token) => {
   try {
     const payloadPart = token.split(".")[1];
@@ -46,6 +49,44 @@ const setButtonLoading = (button, isLoading, loadingText, defaultText) => {
   if (!button) return;
   button.disabled = isLoading;
   button.textContent = isLoading ? loadingText : defaultText;
+};
+
+const isMissingPostColumnError = (error, columnName) => {
+  if (!error || !error.message) return false;
+  const message = error.message.toLowerCase();
+
+  return (
+    message.includes(`column posts.${columnName} does not exist`) ||
+    message.includes(`could not find the '${columnName}' column`) ||
+    message.includes(`'${columnName}' column of 'posts'`)
+  );
+};
+
+const getAlternatePostColumn = (columnName) => {
+  return POST_EMAIL_COLUMNS.find((column) => column !== columnName) || columnName;
+};
+
+const detectPostEmailColumn = async () => {
+  if (cachedPostEmailColumn) {
+    return cachedPostEmailColumn;
+  }
+
+  for (const columnName of POST_EMAIL_COLUMNS) {
+    const { error } = await supabaseClient.from("posts").select(`id, ${columnName}`).limit(1);
+
+    if (!error) {
+      cachedPostEmailColumn = columnName;
+      return cachedPostEmailColumn;
+    }
+
+    if (!isMissingPostColumnError(error, columnName)) {
+      cachedPostEmailColumn = columnName;
+      return cachedPostEmailColumn;
+    }
+  }
+
+  cachedPostEmailColumn = POST_EMAIL_COLUMNS[0];
+  return cachedPostEmailColumn;
 };
 
 const handleNetworkError = (error, fallbackMessage) => {
@@ -185,13 +226,13 @@ const handleSignupPage = async () => {
   });
 };
 
-const createPostElement = (post) => {
+const createPostElement = (post, emailColumn) => {
   const postElement = document.createElement("article");
   postElement.className = "post-item";
 
   const emailElement = document.createElement("div");
   emailElement.className = "post-email";
-  emailElement.textContent = post.user_email || "Ẩn danh";
+  emailElement.textContent = post[emailColumn] || post.user_email || post.email || "Ẩn danh";
 
   const contentElement = document.createElement("p");
   contentElement.className = "post-content";
@@ -212,11 +253,22 @@ const loadPosts = async () => {
   const postsList = document.getElementById("posts-list");
   if (!postsList) return;
 
-  const { data, error } = await supabaseClient
+  let emailColumn = await detectPostEmailColumn();
+  let result = await supabaseClient
     .from("posts")
-    .select("id, user_email, content, created_at")
+    .select(`id, ${emailColumn}, content, created_at`)
     .order("created_at", { ascending: false });
 
+  if (isMissingPostColumnError(result.error, emailColumn)) {
+    emailColumn = getAlternatePostColumn(emailColumn);
+    cachedPostEmailColumn = emailColumn;
+    result = await supabaseClient
+      .from("posts")
+      .select(`id, ${emailColumn}, content, created_at`)
+      .order("created_at", { ascending: false });
+  }
+
+  const { data, error } = result;
   postsList.innerHTML = "";
 
   if (error) {
@@ -235,7 +287,7 @@ const loadPosts = async () => {
   }
 
   data.forEach((post) => {
-    postsList.appendChild(createPostElement(post));
+    postsList.appendChild(createPostElement(post, emailColumn));
   });
 };
 
@@ -263,18 +315,30 @@ const handleHomePage = async () => {
 
     setButtonLoading(postSubmitButton, true, "Đang đăng...", "Post");
 
-    const { error } = await supabaseClient.from("posts").insert([
+    let emailColumn = await detectPostEmailColumn();
+    let result = await supabaseClient.from("posts").insert([
       {
-        user_email: email,
+        [emailColumn]: email,
         content,
       },
     ]);
 
+    if (isMissingPostColumnError(result.error, emailColumn)) {
+      emailColumn = getAlternatePostColumn(emailColumn);
+      cachedPostEmailColumn = emailColumn;
+      result = await supabaseClient.from("posts").insert([
+        {
+          [emailColumn]: email,
+          content,
+        },
+      ]);
+    }
+
     setButtonLoading(postSubmitButton, false, "Đang đăng...", "Post");
 
-    if (error) {
-      if (handleNetworkError(error, "Đăng bài thất bại.")) return;
-      alert(`Đăng bài thất bại: ${error.message}`);
+    if (result.error) {
+      if (handleNetworkError(result.error, "Đăng bài thất bại.")) return;
+      alert(`Đăng bài thất bại: ${result.error.message}`);
       return;
     }
 
