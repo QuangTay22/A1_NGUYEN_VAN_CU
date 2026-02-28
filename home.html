@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bảng tin | Ngôi nhà của những ước mơ</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="home-page dreamy-bg">
+  <header class="topbar dreamy-header">
+    <div class="brand-inline">
+      <div class="logo-dot"></div>
+      <h1>Ngôi nhà của những ước mơ</h1>
+    </div>
+    <button id="logout-btn" class="btn btn-light" type="button">Đăng xuất</button>
+  </header>
+
+  <main class="home-container modern-grid">
+    <section class="card composer-card fade-in-up">
+      <h2>Viết một kỷ niệm mới ✨</h2>
+      <form id="post-form" novalidate>
+        <label for="post-title">Tiêu đề</label>
+        <input id="post-title" type="text" maxlength="120" placeholder="Ví dụ: Buổi chụp ảnh cuối cấp" />
+
+        <label for="post-content">Nội dung</label>
+        <textarea id="post-content" rows="4" placeholder="Hôm nay lớp mình có gì vui nào..."></textarea>
+
+        <div class="upload-grid">
+          <div>
+            <label for="post-image">Ảnh kỷ niệm</label>
+            <input id="post-image" type="file" accept="image/*" />
+            <img id="image-preview" class="media-preview hidden" alt="Xem trước ảnh" />
+          </div>
+          <div>
+            <label for="post-music">Nhạc MP3</label>
+            <input id="post-music" type="file" accept="audio/mpeg,audio/mp3" />
+            <audio id="music-preview" class="media-preview hidden" controls></audio>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Đăng bài</button>
+      </form>
+    </section>
+
+    <section class="card special-days-card fade-in-up">
+      <div class="section-head">
+        <h2>Những ngày đặc biệt</h2>
+      </div>
+      <form id="special-day-form" class="special-form" novalidate>
+        <input id="special-title" type="text" placeholder="Tiêu đề (Sinh nhật Minh...)" />
+        <input id="special-date" type="date" />
+        <input id="special-image" type="url" placeholder="Link ảnh (tuỳ chọn)" />
+        <textarea id="special-description" rows="2" placeholder="Mô tả ngắn"></textarea>
+        <button type="submit" class="btn btn-secondary">Lưu ngày đặc biệt</button>
+      </form>
+      <div id="special-days-list" class="special-days-list"></div>
+    </section>
+
+    <section class="card feed-card fade-in-up">
+      <h2>Bài viết gần đây</h2>
+      <div id="posts-list" class="posts-list"></div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js?v=8"></script>
+</body>
+</html>

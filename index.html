@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đăng nhập | Ngôi nhà của những ước mơ</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="auth-page">
+  <main class="auth-layout">
+    <section class="brand-panel">
+      <h1>Ngôi nhà của những ước mơ</h1>
+      <p>Nơi chia sẻ hình ảnh và câu chuyện của lớp chúng ta ❤️</p>
+    </section>
+
+    <section class="card auth-card">
+      <form id="login-form" novalidate>
+        <h2>Đăng nhập</h2>
+        <label class="sr-only" for="login-email">Email</label>
+        <input id="login-email" type="email" placeholder="Email" required />
+
+        <label class="sr-only" for="login-password">Mật khẩu</label>
+        <input id="login-password" type="password" placeholder="Password" required />
+
+        <button type="submit" class="btn btn-primary">Log in</button>
+      </form>
+      <div class="divider"></div>
+      <button id="go-signup" type="button" class="btn btn-secondary">Create new account</button>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js?v=8"></script>
+</body>
+</html>
