@@ -31,3 +31,9 @@ Sau đó mở: `http://localhost:4173/index.html`
 `app.js` đã chứa sẵn hằng số theo đề bài.
 
 > Lưu ý: URL trong đề có khoảng trắng ở giữa, nên code tự chuẩn hóa URL trước khi khởi tạo client.
+
+## Khắc phục lỗi "Failed to fetch"
+Nếu Console báo `net::ERR_NAME_NOT_RESOLVED` khi gọi Supabase:
+- Nguyên nhân thường là URL Supabase sai project ref.
+- `app.js` đã tự đối chiếu project ref từ `SUPABASE_ANON_KEY` và tự sửa URL về đúng dạng `https://<project-ref>.supabase.co`.
+- Sau khi cập nhật code, hãy hard refresh trình duyệt (`Ctrl + F5`) để bỏ cache JS cũ trên GitHub Pages.

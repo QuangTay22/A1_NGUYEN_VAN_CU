@@ -1,8 +1,38 @@
 const SUPABASE_URL = "https://vzznktcbhkmoukn tyjgq.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6em5rdGNiaGttdW9rbnR5anFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzk3MjYsImV4cCI6MjA4Nzg1NTcyNn0.unkyvL4_AFxRYGpnkyRfW7RHTexuVXbZF1U4Vil8d9Q";
 
-const normalizedUrl = SUPABASE_URL.replace(/\s+/g, "");
-const supabaseClient = window.supabase.createClient(normalizedUrl, SUPABASE_ANON_KEY);
+const parseProjectRefFromAnonKey = (anonKey) => {
+  try {
+    const payloadPart = anonKey.split(".")[1];
+    if (!payloadPart) return null;
+
+    const base64 = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = `${base64}${"=".repeat((4 - (base64.length % 4)) % 4)}`;
+    const payload = JSON.parse(atob(padded));
+
+    return typeof payload.ref === "string" ? payload.ref : null;
+  } catch {
+    return null;
+  }
+};
+
+const buildSupabaseUrl = () => {
+  const cleanedUrl = SUPABASE_URL.replace(/\s+/g, "");
+  const projectRef = parseProjectRefFromAnonKey(SUPABASE_ANON_KEY);
+
+  try {
+    const currentRef = new URL(cleanedUrl).hostname.split(".")[0];
+    if (projectRef && currentRef !== projectRef) {
+      return `https://${projectRef}.supabase.co`;
+    }
+
+    return cleanedUrl;
+  } catch {
+    return projectRef ? `https://${projectRef}.supabase.co` : cleanedUrl;
+  }
+};
+
+const supabaseClient = window.supabase.createClient(buildSupabaseUrl(), SUPABASE_ANON_KEY);
 const currentPage = window.location.pathname.split("/").pop() || "index.html";
 
 const getInputValue = (id) => {
