@@ -35,5 +35,7 @@ Sau đó mở: `http://localhost:4173/index.html`
 ## Khắc phục lỗi "Failed to fetch"
 Nếu Console báo `net::ERR_NAME_NOT_RESOLVED` khi gọi Supabase:
 - Nguyên nhân thường là URL Supabase sai project ref.
-- `app.js` đã tự đối chiếu project ref từ `SUPABASE_ANON_KEY` và tự sửa URL về đúng dạng `https://<project-ref>.supabase.co`.
+- `app.js` luôn ưu tiên lấy đúng project ref từ `SUPABASE_ANON_KEY` để tạo endpoint chuẩn `https://<project-ref>.supabase.co` (không phụ thuộc URL bị gõ sai).
 - Sau khi cập nhật code, hãy hard refresh trình duyệt (`Ctrl + F5`) để bỏ cache JS cũ trên GitHub Pages.
+
+- Trang HTML đã gắn `app.js?v=3` để giảm nguy cơ bị cache JS cũ.

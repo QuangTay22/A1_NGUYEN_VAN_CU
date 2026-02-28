@@ -1,38 +1,40 @@
 const SUPABASE_URL = "https://vzznktcbhkmoukn tyjgq.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6em5rdGNiaGttdW9rbnR5anFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzk3MjYsImV4cCI6MjA4Nzg1NTcyNn0.unkyvL4_AFxRYGpnkyRfW7RHTexuVXbZF1U4Vil8d9Q";
 
-const parseProjectRefFromAnonKey = (anonKey) => {
+const decodeJwtPayload = (token) => {
   try {
-    const payloadPart = anonKey.split(".")[1];
+    const payloadPart = token.split(".")[1];
     if (!payloadPart) return null;
 
     const base64 = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
     const padded = `${base64}${"=".repeat((4 - (base64.length % 4)) % 4)}`;
-    const payload = JSON.parse(atob(padded));
-
-    return typeof payload.ref === "string" ? payload.ref : null;
+    return JSON.parse(atob(padded));
   } catch {
     return null;
   }
 };
 
-const buildSupabaseUrl = () => {
-  const cleanedUrl = SUPABASE_URL.replace(/\s+/g, "");
-  const projectRef = parseProjectRefFromAnonKey(SUPABASE_ANON_KEY);
-
-  try {
-    const currentRef = new URL(cleanedUrl).hostname.split(".")[0];
-    if (projectRef && currentRef !== projectRef) {
-      return `https://${projectRef}.supabase.co`;
-    }
-
-    return cleanedUrl;
-  } catch {
-    return projectRef ? `https://${projectRef}.supabase.co` : cleanedUrl;
+const getSupabaseProjectRef = () => {
+  const payload = decodeJwtPayload(SUPABASE_ANON_KEY);
+  if (payload && typeof payload.ref === "string" && payload.ref.length > 0) {
+    return payload.ref;
   }
+
+  const fallback = SUPABASE_URL.replace(/\s+/g, "").match(/^https:\/\/([a-z0-9]+)\.supabase\.co$/i);
+  return fallback ? fallback[1] : null;
 };
 
-const supabaseClient = window.supabase.createClient(buildSupabaseUrl(), SUPABASE_ANON_KEY);
+const buildSupabaseUrl = () => {
+  const projectRef = getSupabaseProjectRef();
+  if (projectRef) {
+    return `https://${projectRef}.supabase.co`;
+  }
+
+  return SUPABASE_URL.replace(/\s+/g, "");
+};
+
+const ACTIVE_SUPABASE_URL = buildSupabaseUrl();
+const supabaseClient = window.supabase.createClient(ACTIVE_SUPABASE_URL, SUPABASE_ANON_KEY);
 const currentPage = window.location.pathname.split("/").pop() || "index.html";
 
 const getInputValue = (id) => {
@@ -44,6 +46,18 @@ const setButtonLoading = (button, isLoading, loadingText, defaultText) => {
   if (!button) return;
   button.disabled = isLoading;
   button.textContent = isLoading ? loadingText : defaultText;
+};
+
+const handleNetworkError = (error, fallbackMessage) => {
+  if (error && (error.message || "").toLowerCase().includes("failed to fetch")) {
+    alert(
+      `${fallbackMessage}\n\nKhông thể kết nối tới Supabase (${ACTIVE_SUPABASE_URL}).\n` +
+        "Hãy kiểm tra Internet, hard refresh (Ctrl + F5), và đảm bảo project Supabase đang hoạt động."
+    );
+    return true;
+  }
+
+  return false;
 };
 
 const requireAuth = async () => {
@@ -102,6 +116,7 @@ const handleLoginPage = async () => {
     setButtonLoading(loginSubmitButton, false, "Đang đăng nhập...", "Log in");
 
     if (error) {
+      if (handleNetworkError(error, "Đăng nhập thất bại.")) return;
       alert(`Đăng nhập thất bại: ${error.message}`);
       return;
     }
@@ -145,6 +160,7 @@ const handleSignupPage = async () => {
 
     if (error) {
       setButtonLoading(signupSubmitButton, false, "Đang tạo tài khoản...", "Create account");
+      if (handleNetworkError(error, "Tạo tài khoản thất bại.")) return;
       alert(`Tạo tài khoản thất bại: ${error.message}`);
       return;
     }
@@ -204,7 +220,9 @@ const loadPosts = async () => {
   postsList.innerHTML = "";
 
   if (error) {
-    alert(`Không thể tải bài viết: ${error.message}`);
+    if (!handleNetworkError(error, "Không thể tải bài viết.")) {
+      alert(`Không thể tải bài viết: ${error.message}`);
+    }
     return;
   }
 
@@ -255,6 +273,7 @@ const handleHomePage = async () => {
     setButtonLoading(postSubmitButton, false, "Đang đăng...", "Post");
 
     if (error) {
+      if (handleNetworkError(error, "Đăng bài thất bại.")) return;
       alert(`Đăng bài thất bại: ${error.message}`);
       return;
     }
