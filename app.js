@@ -89,6 +89,10 @@ const detectPostEmailColumn = async () => {
   return cachedPostEmailColumn;
 };
 
+const doPostInsert = async (payload) => {
+  return supabaseClient.from("posts").insert([payload], { defaultToNull: false });
+};
+
 const buildPostTitle = (content) => {
   const normalized = (content || "").replace(/\s+/g, " ").trim();
   if (!normalized) return "Bài viết mới";
@@ -98,40 +102,42 @@ const buildPostTitle = (content) => {
 const insertPostWithFallback = async ({ email, content }) => {
   const title = buildPostTitle(content);
 
-  let result = await supabaseClient.from("posts").insert([
-    {
-      user_email: email,
-      content,
-      title,
-    },
-  ]);
+  const primaryPayload = {
+    user_email: email,
+    content,
+    title,
+  };
+
+  let result = await doPostInsert(primaryPayload);
 
   if (isMissingPostColumnError(result.error, "title")) {
-    result = await supabaseClient.from("posts").insert([
-      {
-        user_email: email,
-        content,
-      },
-    ]);
+    result = await doPostInsert({
+      user_email: email,
+      content,
+    });
   }
 
   if (isMissingPostColumnError(result.error, "user_email")) {
-    result = await supabaseClient.from("posts").insert([
-      {
-        email,
-        content,
-        title,
-      },
-    ]);
+    result = await doPostInsert({
+      email,
+      content,
+      title,
+    });
 
     if (isMissingPostColumnError(result.error, "title")) {
-      result = await supabaseClient.from("posts").insert([
-        {
-          email,
-          content,
-        },
-      ]);
+      result = await doPostInsert({
+        email,
+        content,
+      });
     }
+  }
+
+  if (
+    result.error &&
+    (result.error.message || "").toLowerCase().includes('null value') &&
+    (result.error.message || "").toLowerCase().includes('column "title"')
+  ) {
+    result = await doPostInsert(primaryPayload);
   }
 
   return result;

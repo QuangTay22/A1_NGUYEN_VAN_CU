@@ -38,7 +38,7 @@ Nếu Console báo `net::ERR_NAME_NOT_RESOLVED` khi gọi Supabase:
 - `app.js` luôn ưu tiên lấy đúng project ref từ `SUPABASE_ANON_KEY` để tạo endpoint chuẩn `https://<project-ref>.supabase.co` (không phụ thuộc URL bị gõ sai).
 - Sau khi cập nhật code, hãy hard refresh trình duyệt (`Ctrl + F5`) để bỏ cache JS cũ trên GitHub Pages.
 
-- Trang HTML đã gắn `app.js?v=6` để giảm nguy cơ bị cache JS cũ.
+- Trang HTML đã gắn `app.js?v=7` để giảm nguy cơ bị cache JS cũ.
 
 ## Lỗi `column posts.user_email does not exist`
 Nếu project Supabase của bạn tạo bảng `posts` từ trước và đang dùng cột `email` thay vì `user_email`:
@@ -55,5 +55,5 @@ Nếu đăng bài bị lỗi RLS như ảnh bạn gửi:
 Nếu đăng bài báo thiếu cột `title` như ảnh bạn gửi:
 - Bảng `posts` trên Supabase đang có cột `title` đặt `NOT NULL`.
 - Frontend mới đã tự gửi thêm `title` (tạo từ nội dung bài viết), và vẫn tương thích nếu schema không có cột `title`.
-- Hãy hard refresh (`Ctrl + F5`) để trình duyệt lấy `app.js?v=6` mới nhất.
+- Hãy hard refresh (`Ctrl + F5`) để trình duyệt lấy `app.js?v=7` mới nhất.
 - Chạy lại `supabase.sql` để thêm default cho `title` và chuẩn hóa dữ liệu cũ.
