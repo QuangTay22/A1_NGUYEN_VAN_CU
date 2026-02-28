@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bảng tin | Ngôi nhà của những ước mơ</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="home-page">
+  <header class="topbar">
+    <h1>Ngôi nhà của những ước mơ</h1>
+    <button id="logout-btn" class="btn btn-light" type="button">Logout</button>
+  </header>
+
+  <main class="home-container">
+    <section class="card composer-card">
+      <h2>Chia sẻ câu chuyện của bạn</h2>
+      <form id="post-form" novalidate>
+        <label class="sr-only" for="post-content">Nội dung bài đăng</label>
+        <textarea id="post-content" rows="4" placeholder="Hôm nay lớp mình có gì vui nào..."></textarea>
+        <button type="submit" class="btn btn-primary">Post</button>
+      </form>
+    </section>
+
+    <section class="card feed-card">
+      <h2>Bài viết gần đây</h2>
+      <div id="posts-list" class="posts-list"></div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
+</body>
+</html>
