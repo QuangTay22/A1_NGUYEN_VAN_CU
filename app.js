@@ -89,6 +89,26 @@ const detectPostEmailColumn = async () => {
   return cachedPostEmailColumn;
 };
 
+const insertPostWithFallback = async ({ email, content }) => {
+  let result = await supabaseClient.from("posts").insert([
+    {
+      user_email: email,
+      content,
+    },
+  ]);
+
+  if (isMissingPostColumnError(result.error, "user_email")) {
+    result = await supabaseClient.from("posts").insert([
+      {
+        email,
+        content,
+      },
+    ]);
+  }
+
+  return result;
+};
+
 const handleNetworkError = (error, fallbackMessage) => {
   if (error && (error.message || "").toLowerCase().includes("failed to fetch")) {
     alert(
@@ -315,29 +335,21 @@ const handleHomePage = async () => {
 
     setButtonLoading(postSubmitButton, true, "Đang đăng...", "Post");
 
-    let emailColumn = await detectPostEmailColumn();
-    let result = await supabaseClient.from("posts").insert([
-      {
-        [emailColumn]: email,
-        content,
-      },
-    ]);
-
-    if (isMissingPostColumnError(result.error, emailColumn)) {
-      emailColumn = getAlternatePostColumn(emailColumn);
-      cachedPostEmailColumn = emailColumn;
-      result = await supabaseClient.from("posts").insert([
-        {
-          [emailColumn]: email,
-          content,
-        },
-      ]);
-    }
+    const result = await insertPostWithFallback({ email, content });
 
     setButtonLoading(postSubmitButton, false, "Đang đăng...", "Post");
 
     if (result.error) {
       if (handleNetworkError(result.error, "Đăng bài thất bại.")) return;
+
+      if ((result.error.message || "").toLowerCase().includes("row-level security")) {
+        alert(
+          "Đăng bài thất bại do policy RLS của Supabase chưa khớp. " +
+            "Hãy chạy lại file supabase.sql mới nhất để cập nhật policy insert."
+        );
+        return;
+      }
+
       alert(`Đăng bài thất bại: ${result.error.message}`);
       return;
     }

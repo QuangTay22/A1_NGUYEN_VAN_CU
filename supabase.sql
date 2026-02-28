@@ -38,9 +38,33 @@ for select
 to authenticated
 using (true);
 
+drop policy if exists "Authenticated users can insert posts (user_email)" on public.posts;
+drop policy if exists "Authenticated users can insert posts (email)" on public.posts;
 drop policy if exists "Authenticated users can insert posts" on public.posts;
-create policy "Authenticated users can insert posts"
+
+-- Policy insert cho schema chuẩn user_email
+create policy "Authenticated users can insert posts (user_email)"
 on public.posts
 for insert
 to authenticated
 with check (auth.email() = user_email);
+
+-- Nếu có cột email legacy thì thêm policy tương thích
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'posts'
+      and column_name = 'email'
+  ) then
+    execute '
+      create policy "Authenticated users can insert posts (email)"
+      on public.posts
+      for insert
+      to authenticated
+      with check (auth.email() = email)
+    ';
+  end if;
+end $$;
