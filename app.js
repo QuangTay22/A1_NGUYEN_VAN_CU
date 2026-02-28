@@ -89,25 +89,54 @@ const detectPostEmailColumn = async () => {
   return cachedPostEmailColumn;
 };
 
+const buildPostTitle = (content) => {
+  const normalized = (content || "").replace(/\s+/g, " ").trim();
+  if (!normalized) return "Bài viết mới";
+  return normalized.length > 80 ? `${normalized.slice(0, 80)}...` : normalized;
+};
+
 const insertPostWithFallback = async ({ email, content }) => {
+  const title = buildPostTitle(content);
+
   let result = await supabaseClient.from("posts").insert([
     {
       user_email: email,
       content,
+      title,
     },
   ]);
+
+  if (isMissingPostColumnError(result.error, "title")) {
+    result = await supabaseClient.from("posts").insert([
+      {
+        user_email: email,
+        content,
+      },
+    ]);
+  }
 
   if (isMissingPostColumnError(result.error, "user_email")) {
     result = await supabaseClient.from("posts").insert([
       {
         email,
         content,
+        title,
       },
     ]);
+
+    if (isMissingPostColumnError(result.error, "title")) {
+      result = await supabaseClient.from("posts").insert([
+        {
+          email,
+          content,
+        },
+      ]);
+    }
   }
 
   return result;
 };
+
 
 const handleNetworkError = (error, fallbackMessage) => {
   if (error && (error.message || "").toLowerCase().includes("failed to fetch")) {
@@ -342,10 +371,20 @@ const handleHomePage = async () => {
     if (result.error) {
       if (handleNetworkError(result.error, "Đăng bài thất bại.")) return;
 
-      if ((result.error.message || "").toLowerCase().includes("row-level security")) {
+      const normalizedError = (result.error.message || "").toLowerCase();
+
+      if (normalizedError.includes("row-level security")) {
         alert(
           "Đăng bài thất bại do policy RLS của Supabase chưa khớp. " +
             "Hãy chạy lại file supabase.sql mới nhất để cập nhật policy insert."
+        );
+        return;
+      }
+
+      if (normalizedError.includes("null value") && normalizedError.includes("column \"title\"")) {
+        alert(
+          "Đăng bài thất bại vì bảng posts đang bắt buộc cột title. " +
+            "Frontend đã cập nhật để tự gửi title, vui lòng hard refresh (Ctrl+F5) hoặc cập nhật app.js mới nhất."
         );
         return;
       }
